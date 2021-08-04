@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <search.h>
+#include <ctype.h>
 
 typedef struct mapentry {
     char *label;
@@ -22,3 +23,6 @@ int process_line(char *buffer, char *line, int *iter);
 
 
 void process_label(char *buf, int *symbol, int *iter);
+int find_address(MapEntry **table, int table_size, char *target);
+int second_pass(char *buffer, int symbols_written, char *line);
+void preprocess_table(MapEntry **table, size_t table_size);

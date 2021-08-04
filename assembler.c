@@ -3,6 +3,7 @@
 #define NUM(a) sizeof(a) / sizeof(a[0])
 #define MAXSIZE 100
 #define BUFSIZE 256
+#define DEBUG 0
 
 char *symbols[] = {"R0", "R1", "R2", "R3", "R4",
                    "R5", "R6", "R7", "R8", "R9",
@@ -28,13 +29,24 @@ int main(int argc, char **argv) {
     */
 
     // create pre-define table
+    preprocess_table(lookup_table, table_size);
+
+    const char test[] = "rect/Rect.asm";
+    iter_over_lines(test, 0);
+    printTable(lookup_table, table_size);
+
+    // TABLE TEST
+    // int return_address = find_address(lookup_table, table_size, "LOOP");
+    // printf("%d\n", return_address);
+
+    iter_over_lines("rect/Rect.asm_no_comments", 1);
+    
+}
+
+void preprocess_table(MapEntry **table, size_t table_size) {
     for (int i = 0; i < NUM(symbols); i++) {
         lookup_table[table_size++] = create_entry(symbols[i], predefinitions[i]);
     }
-
-    const char test[] = "max/Max.asm";
-    iter_over_lines(test, 0);
-    printTable(lookup_table, table_size);
 }
 
 void printTable(MapEntry **table, size_t table_size) {
@@ -47,7 +59,7 @@ void printTable(MapEntry **table, size_t table_size) {
 /*
  * accepts pointer to a file and a function to apply at each line
  */
-void iter_over_lines(const char *path, int here_should_go_func) {
+void iter_over_lines(const char *path, int pass) {
     FILE *fptr;
     fptr = fopen(path, "r");
     if (fptr == NULL) {
@@ -71,10 +83,22 @@ void iter_over_lines(const char *path, int here_should_go_func) {
     while ((length = get_line(buffer, bufsize, fptr)) != -1) {
         // there is some check for 13' Ascii carriage return ??
         // iteration over a line, to get rid of comments and white spaces
-        int sym_to_write = process_line(buffer, line, &instructions_written);
+
+        int sym_to_write;
+        switch (pass)
+        {
+        case 0:
+            sym_to_write = process_line(buffer, line, &instructions_written);
+            break;
+        case 1:
+            sym_to_write = second_pass(buffer, length, line);
+            break;
+        default:
+            fprintf(stderr, "Pass was not specifed during file processing");
+            exit(EXIT_FAILURE);
+        }
 
         if (sym_to_write != 0) {
-            // printf("%s\n", line);
             fprintf(fptr_to_write, "%s\n", line);
         }
 
@@ -85,8 +109,87 @@ void iter_over_lines(const char *path, int here_should_go_func) {
 
     free(buffer);
     free(line);
-    fclose(fptr);
-    fclose(fptr_to_write);
+    if (fclose(fptr) == EOF) {
+        fprintf(stderr, "Could not close the file 1\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fclose(fptr_to_write)) {
+        fprintf(stderr, "Could not close the file 2 \n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+int find_address(MapEntry **table, int table_size, char *target){
+    int bottom= 0;
+    int mid;
+    int top = table_size - 1;
+    int found = 0;
+
+    while(bottom <= top){
+        mid = (bottom + top)/2;
+        if (strcmp(table[mid]->label, target) == 0){
+            if (DEBUG != 0)
+                printf("%s found at location %d.\n", target, mid+1);
+            found = !found;
+            break;
+        }
+        if (strcmp(table[mid]->label, target) < 0){
+            top = mid - 1;
+        }
+        if (strcmp(table[mid]->label, target) > 0){
+            bottom = mid + 1;
+        }
+    }
+
+    if (found)
+        return table[mid + 1]->address;
+    return -1;
+}
+
+// modifies line
+int second_pass(char *buffer, int symbols_written, char *line) {
+    // char label[MAXSIZE] = {0};
+    int label_size = 0;
+    char ch;
+    int i = 0;
+
+    if (buffer[0] == '@') {
+        int lookup = find_address(lookup_table, table_size, buffer);
+        if (lookup == -1) {
+            if (isdigit(buffer[1]) != 0) {
+                strcpy(line, buffer);
+            } else {
+                // this should handle the variables
+                // int address = get_available_address(lookup_table, table_size);
+                // lookup_table[table_size++] = create_entry(buffer, address);
+                strcpy(line, buffer);
+            }
+        } else {
+            // creates a new command, substituting the (LABEL) with its
+            // address
+            char *lookup_str;
+            sprintf(lookup_str, "@%d", lookup);   
+            // printf("Lookup: %s\n", lookup_str);
+            strcpy(line, lookup_str);
+        }
+    } else {
+        strcpy(line, buffer);
+    }
+
+    return 1;
+}
+
+int get_available_address(MapEntry **table, size_t table_size) {
+    int *addresses;
+    int adr_counter = 0;
+    for (int i = 0; i < table_size; i++) {
+        addresses[adr_counter++] = table[i]->address;
+    }
+    // TODO: find lowerst possible not taken addres starting from 16
+    // and return it
+
+    return 0;
 }
 
 int process_line(char *buffer, char *line, int *iter) {
@@ -109,6 +212,10 @@ int process_line(char *buffer, char *line, int *iter) {
         }
     }
 
+    line[symbols_to_write] = '\0';
+
+    // for (int i = 0; i < symbols_to_write; i++)
+    //    printf("%c(%d) ", line[i], (int)line[i]);
 
     if (verbose != 0) 
         (*iter)++; 
@@ -122,6 +229,7 @@ void process_label(char *buf, int *symbol, int *iter) {
     char curch;
     int label_size = 0;
 
+    temp_label[label_size++] = '@';
     while ((curch = buf[++(*symbol)]) != ')') {
         temp_label[label_size++] = curch;
     }
@@ -129,8 +237,6 @@ void process_label(char *buf, int *symbol, int *iter) {
 
     char *label = (char *) calloc(label_size, sizeof(char));
     strcpy(label, temp_label);
-    // printf("%s\n", label);
-    // printf("%d\n", (*iter) + 1);
 
     lookup_table[table_size++] = create_entry(label, *iter);
     memset(temp_label, 0, label_size);
@@ -154,7 +260,7 @@ MapEntry *create_entry(char *label, int address) {
 
 FILE *get_file_to_write(const char *path) {
     char add_str[] = "_no_comments";
-    char new_path[32] = {0};
+    char new_path[64] = {0};
     FILE *fptr;
 
     // new path creation
@@ -167,6 +273,9 @@ FILE *get_file_to_write(const char *path) {
     if (fptr == NULL) {
         fprintf(stderr, "Could not open the file %s to write\n", new_path);
         exit(EXIT_FAILURE);
+    } else {
+        // printf("FIle at this path was successfully openned: %s\n", new_path);
+        ;
     }
 
     return fptr;
@@ -183,7 +292,7 @@ int get_line(char *buf, size_t bufsize, FILE *fptr) {
             bufsize += 128;
             lineBuffer = realloc(lineBuffer, bufsize);
             if (lineBuffer == NULL) {
-                printf("Error reallocating space for line buffer.");
+                fprintf(stderr, "Error reallocating space for line buffer.");
                 exit(EXIT_FAILURE);
             }
         }
