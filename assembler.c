@@ -5,12 +5,12 @@
 #define BUFSIZE 256
 #define DEBUG 0
 
-char *symbols[] = {"R0", "R1", "R2", "R3", "R4",
-                   "R5", "R6", "R7", "R8", "R9",
-                   "R10", "R11", "R12", "R13", "R14",
-                   "R15",
-                   "SCREEN", "KBD", "SP", "LCL",
-                   "ARG", "THIS", "THAT"};
+char *symbols[] = {"@R0", "@R1", "@R2", "@R3", "@R4",
+                   "@R5", "@R6", "@R7", "@R8", "@R9",
+                   "@R10", "@R11", "@R12", "@R13", "@R14",
+                   "@R15",
+                   "@SCREEN", "@KBD", "@SP", "@LCL",
+                   "@ARG", "@THIS", "@THAT"};
 
 // I know about enum... just lazy LMAO
 int predefinitions[] = {0, 1, 2, 3, 4, 5, 6, 7, 8,
@@ -18,7 +18,9 @@ int predefinitions[] = {0, 1, 2, 3, 4, 5, 6, 7, 8,
                          16384, 24576, 0, 1, 2, 3, 5};
 
 MapEntry *lookup_table[MAXSIZE] = {0};
-size_t table_size = 0;
+int table_size = 0;
+
+int current_addres_for_variable = 16;
 
 int main(int argc, char **argv) {
     /*
@@ -29,21 +31,22 @@ int main(int argc, char **argv) {
     */
 
     // create pre-define table
-    preprocess_table(lookup_table, table_size);
+    preprocess_table();
 
     const char test[] = "rect/Rect.asm";
     iter_over_lines(test, 0);
-    printTable(lookup_table, table_size);
 
     // TABLE TEST
     // int return_address = find_address(lookup_table, table_size, "LOOP");
     // printf("%d\n", return_address);
 
     iter_over_lines("rect/Rect.asm_no_comments", 1);
+
+    printTable(lookup_table, table_size);
     
 }
 
-void preprocess_table(MapEntry **table, size_t table_size) {
+void preprocess_table(void) {
     for (int i = 0; i < NUM(symbols); i++) {
         lookup_table[table_size++] = create_entry(symbols[i], predefinitions[i]);
     }
@@ -93,6 +96,8 @@ void iter_over_lines(const char *path, int pass) {
         case 1:
             sym_to_write = second_pass(buffer, length, line);
             break;
+        case 2:
+            sym_to_write = third_pass(buffer, length, line);
         default:
             fprintf(stderr, "Pass was not specifed during file processing");
             exit(EXIT_FAILURE);
@@ -120,31 +125,35 @@ void iter_over_lines(const char *path, int pass) {
     }
 }
 
-int find_address(MapEntry **table, int table_size, char *target){
-    int bottom= 0;
-    int mid;
-    int top = table_size - 1;
+int find_address(char *target){
+    int i = 0;
     int found = 0;
 
-    while(bottom <= top){
-        mid = (bottom + top)/2;
-        if (strcmp(table[mid]->label, target) == 0){
-            if (DEBUG != 0)
-                printf("%s found at location %d.\n", target, mid+1);
+    printf("Target of find address: %s\n", target);
+
+    for (i = 0; i < table_size; i++) {
+        if (strcmp(lookup_table[i]->label, target) == 0){
+            // if (DEBUG != 0)
+            printf("%s found at location %d.\n", target, i);
             found = !found;
             break;
         }
-        if (strcmp(table[mid]->label, target) < 0){
-            top = mid - 1;
-        }
-        if (strcmp(table[mid]->label, target) > 0){
-            bottom = mid + 1;
-        }
     }
 
-    if (found)
-        return table[mid + 1]->address;
+    printf("Found: %d\n", found);
+
+    if (found) {
+        // POSBUG: on StackOverFlow there was mid + 1
+        return lookup_table[i]->address;
+    }
+
     return -1;
+}
+
+int third_pass(char *buffer, int symbols_written, char *line) {
+
+
+    return 1;
 }
 
 // modifies line
@@ -155,20 +164,26 @@ int second_pass(char *buffer, int symbols_written, char *line) {
     int i = 0;
 
     if (buffer[0] == '@') {
-        int lookup = find_address(lookup_table, table_size, buffer);
+        int lookup = find_address(buffer);
         if (lookup == -1) {
             if (isdigit(buffer[1]) != 0) {
+                printf("This command is simple A command\n");
                 strcpy(line, buffer);
             } else {
                 // this should handle the variables
-                // int address = get_available_address(lookup_table, table_size);
-                // lookup_table[table_size++] = create_entry(buffer, address);
+                get_available_address();
+                // printf("Received free adress: %d\n", current_addres_for_variable);
+                char *line_to_write;
+                line_to_write = (char *) calloc(BUFSIZE, sizeof(char));
+                strcpy(line_to_write, buffer);
+                printf("ADING: %s %d\n", line_to_write, current_addres_for_variable);
+                lookup_table[table_size++] = create_entry(line_to_write, current_addres_for_variable);
                 strcpy(line, buffer);
             }
         } else {
             // creates a new command, substituting the (LABEL) with its
             // address
-            char *lookup_str;
+            char lookup_str[MAXSIZE];
             sprintf(lookup_str, "@%d", lookup);   
             // printf("Lookup: %s\n", lookup_str);
             strcpy(line, lookup_str);
@@ -180,14 +195,27 @@ int second_pass(char *buffer, int symbols_written, char *line) {
     return 1;
 }
 
-int get_available_address(MapEntry **table, size_t table_size) {
-    int *addresses;
+void get_available_address(void) {
+    int addresses[MAXSIZE] = {0};
     int adr_counter = 0;
     for (int i = 0; i < table_size; i++) {
-        addresses[adr_counter++] = table[i]->address;
+        addresses[adr_counter++] = lookup_table[i]->address;
     }
-    // TODO: find lowerst possible not taken addres starting from 16
-    // and return it
+    // TEST PURPOSE
+    // for (int i = 0; i < adr_counter; i++)
+    //    printf("%d: %d\n", i, addresses[i]);
+    while (in_arr(addresses, NUM(addresses), current_addres_for_variable) != 0)
+        current_addres_for_variable += 1;
+}
+
+int in_arr(int *arr, int arr_size, int target) {
+    int verbose = 0;
+    for (int i = 0; i < arr_size; i++) {
+        if (arr[i] == target) {
+            verbose = !verbose;
+            return 1;
+        }
+    }
 
     return 0;
 }
