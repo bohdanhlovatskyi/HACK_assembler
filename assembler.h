@@ -24,9 +24,8 @@ int process_line(char *buffer, char *line, int *iter);
 
 void process_label(char *buf, int *symbol, int *iter);
 int find_address(char *target);
-int second_pass(char *buffer, int symbols_written, char *line);
 void preprocess_table(void);
 void get_available_address(void);
 int in_arr(int *arr, int arr_size, int target);
 
-int third_pass(char *buffer, int symbols_written, char *line);
+int iterate_over(char *buffer, int symbols_written, char *line, int handle_vars);

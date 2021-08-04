@@ -43,6 +43,8 @@ int main(int argc, char **argv) {
     iter_over_lines("rect/Rect.asm_no_comments", 1);
 
     printTable(lookup_table, table_size);
+
+    iter_over_lines("rect/Rect.asm_no_comments_no_comments", 2);
     
 }
 
@@ -94,10 +96,11 @@ void iter_over_lines(const char *path, int pass) {
             sym_to_write = process_line(buffer, line, &instructions_written);
             break;
         case 1:
-            sym_to_write = second_pass(buffer, length, line);
+            sym_to_write = iterate_over(buffer, length, line, 1);
             break;
         case 2:
-            sym_to_write = third_pass(buffer, length, line);
+            sym_to_write = iterate_over(buffer, length, line, 0);
+            break;
         default:
             fprintf(stderr, "Pass was not specifed during file processing");
             exit(EXIT_FAILURE);
@@ -129,18 +132,20 @@ int find_address(char *target){
     int i = 0;
     int found = 0;
 
-    printf("Target of find address: %s\n", target);
+    if (DEBUG)
+        printf("Target of find address: %s\n", target);
 
     for (i = 0; i < table_size; i++) {
         if (strcmp(lookup_table[i]->label, target) == 0){
-            // if (DEBUG != 0)
-            printf("%s found at location %d.\n", target, i);
+            if (DEBUG)
+                printf("%s found at location %d.\n", target, i);
             found = !found;
             break;
         }
     }
 
-    printf("Found: %d\n", found);
+    if (DEBUG)
+        printf("Found: %d\n", found);
 
     if (found) {
         // POSBUG: on StackOverFlow there was mid + 1
@@ -150,14 +155,7 @@ int find_address(char *target){
     return -1;
 }
 
-int third_pass(char *buffer, int symbols_written, char *line) {
-
-
-    return 1;
-}
-
-// modifies line
-int second_pass(char *buffer, int symbols_written, char *line) {
+int iterate_over(char *buffer, int symbols_written, char *line, int handle_var) {
     // char label[MAXSIZE] = {0};
     int label_size = 0;
     char ch;
@@ -167,18 +165,20 @@ int second_pass(char *buffer, int symbols_written, char *line) {
         int lookup = find_address(buffer);
         if (lookup == -1) {
             if (isdigit(buffer[1]) != 0) {
-                printf("This command is simple A command\n");
                 strcpy(line, buffer);
             } else {
-                // this should handle the variables
-                get_available_address();
-                // printf("Received free adress: %d\n", current_addres_for_variable);
-                char *line_to_write;
-                line_to_write = (char *) calloc(BUFSIZE, sizeof(char));
-                strcpy(line_to_write, buffer);
-                printf("ADING: %s %d\n", line_to_write, current_addres_for_variable);
-                lookup_table[table_size++] = create_entry(line_to_write, current_addres_for_variable);
-                strcpy(line, buffer);
+                if (handle_var == 1) {
+                    get_available_address();
+                    // printf("Received free adress: %d\n", current_addres_for_variable);
+                        char *line_to_write;
+                    line_to_write = (char *) calloc(BUFSIZE, sizeof(char));
+                    strcpy(line_to_write, buffer);
+                    printf("ADING: %s %d\n", line_to_write, current_addres_for_variable);
+                    lookup_table[table_size++] = create_entry(line_to_write, current_addres_for_variable);
+                    strcpy(line, buffer);
+                } else {
+                    fprintf(stderr, "Error third passing the file\n");
+                }
             }
         } else {
             // creates a new command, substituting the (LABEL) with its
@@ -194,6 +194,7 @@ int second_pass(char *buffer, int symbols_written, char *line) {
 
     return 1;
 }
+
 
 void get_available_address(void) {
     int addresses[MAXSIZE] = {0};
