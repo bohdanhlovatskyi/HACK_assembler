@@ -1,0 +1,7 @@
+*.asm
+*.asm_no_comments
+a.out
+assembler
+assembler.h.gch
+.vscode
+.DS_Store
