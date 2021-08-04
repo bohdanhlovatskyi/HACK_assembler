@@ -170,12 +170,14 @@ int iterate_over(char *buffer, int symbols_written, char *line, int handle_var) 
                 if (handle_var == 1) {
                     get_available_address();
                     // printf("Received free adress: %d\n", current_addres_for_variable);
-                        char *line_to_write;
+                    char *line_to_write;
                     line_to_write = (char *) calloc(BUFSIZE, sizeof(char));
                     strcpy(line_to_write, buffer);
                     printf("ADING: %s %d\n", line_to_write, current_addres_for_variable);
                     lookup_table[table_size++] = create_entry(line_to_write, current_addres_for_variable);
-                    strcpy(line, buffer);
+                    char lookup_str[MAXSIZE];
+                    sprintf(lookup_str, "@%d", current_addres_for_variable);
+                    strcpy(line, lookup_str);
                 } else {
                     fprintf(stderr, "Error third passing the file\n");
                 }

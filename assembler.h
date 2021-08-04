@@ -3,6 +3,7 @@
 #include <string.h>
 #include <search.h>
 #include <ctype.h>
+#include <limits.h>
 
 typedef struct mapentry {
     char *label;
