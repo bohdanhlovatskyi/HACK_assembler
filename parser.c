@@ -110,7 +110,7 @@ void parse_line(char *buffer, FILE *res) {
             printf("%s | %s | %s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
         }
         // prints the result to file
-        fprintf(res, "111%s%s%s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
+        fprintf(res, "1110%s%s%s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
     }
 }
 
@@ -232,9 +232,9 @@ void proccess_A_cmd(char *buffer, FILE *outfile) {
     if ((len = 15 - int_len(bin_repr)) > 0) {
         // creates a string of zeroes to add them to the beginning of binary string,
         // so to its size was 15 digits
-        char zeroes_to_add[len];
-        memset(zeroes_to_add, '0', len - 1);
-        zeroes_to_add[len - 1] = '\0';
+        char zeroes_to_add[len + 1];
+        memset(zeroes_to_add, '0', len);
+        zeroes_to_add[len] = '\0';
 
         // prints the A cmd to the file
         fprintf(outfile, "0%s%s\n", zeroes_to_add, address_str);
