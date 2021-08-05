@@ -1,4 +1,13 @@
 #include "assembler.h"
+#include "parser.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <search.h>
+#include <ctype.h>
+#include <limits.h>
+#include <math.h>
+
 
 #define NUM(a) sizeof(a) / sizeof(a[0])
 #define MAXSIZE 100
@@ -23,41 +32,64 @@ int table_size = 0;
 int current_addres_for_variable = 16;
 
 int main(int argc, char **argv) {
-    /*
+
     if (argc != 2) {
         printf("Error: usage: a.out path_to_file");
         exit(EXIT_FAILURE);
     }
-    */
 
     // create pre-define table
     preprocess_table();
 
-    const char test[] = "rect/Rect.asm";
-    iter_over_lines(test, 0);
+    char *next_file, *prev_file, *init_file;
+    prev_file = argv[1];
+    
+    for (int pass = 0; pass < 3; pass++) {
+        next_file = iter_over_lines(prev_file, pass);
+        if (DEBUG)
+            printf("%s; prev: %s\n", next_file, prev_file);
+        if (pass != 0)
+            remove(prev_file); 
+        prev_file = next_file;
+    }
 
-    // TABLE TEST
-    // int return_address = find_address(lookup_table, table_size, "LOOP");
-    // printf("%d\n", return_address);
+    prev_file = NULL;
+    printf("%s; prev: %s\n", next_file, prev_file);
 
-    iter_over_lines("rect/Rect.asm_no_comments", 1);
-
-    printTable(lookup_table, table_size);
-
-    iter_over_lines("rect/Rect.asm_no_comments_no_comments", 2);
-
-    /*
     char line[MAXSIZE];
     int length;
 
     FILE *read_from;
-    read_from = fopen("rect/Rect.asm_no_comments_no_comments", "r");
+    FILE *res;
+    read_from = fopen(next_file, "r");
+
+    char *write_to = get_result_path(argv[1]);
+    res = fopen(write_to, "ab");
 
     while ((length = get_line(line, MAXSIZE, read_from)) != EOF) {
-        proccess_A_cmd(line);
+        parse_line(line, res);
     }
-    */
+
+    free(write_to);
+    free(next_file);
+    remove(next_file);
+}
+
+char *get_result_path(char *path) {
+    char *out;
+    out = (char *) calloc(MAXSIZE, sizeof(char));
+    int out_iter = 0;
+
+    char ch;
+    int i = 0;
+    while ((ch = path[i++]) != '.') {
+        out[out_iter++] = ch;
+    }
+    char str_to_add[] = ".bin";
+    strcat(out, str_to_add);
+    printf("Resulting file: %s\n", out);
     
+    return out;
 }
 
 void preprocess_table(void) {
@@ -76,7 +108,7 @@ void printTable(MapEntry **table, size_t table_size) {
 /*
  * accepts pointer to a file and a function to apply at each line
  */
-void iter_over_lines(const char *path, int pass) {
+char *iter_over_lines(const char *path, int pass) {
     FILE *fptr, *fptr_to_write;
     fptr = fopen(path, "r");
     if (fptr == NULL) {
@@ -104,7 +136,6 @@ void iter_over_lines(const char *path, int pass) {
         // printf("FIle at this path was successfully openned: %s\n", new_path);
         ;
     }
-    free(path_to_write);
 
     int instructions_written = 0; // keeps treck of the current instruction number
     while ((length = get_line(buffer, bufsize, fptr)) != -1) {
@@ -148,6 +179,8 @@ void iter_over_lines(const char *path, int pass) {
         fprintf(stderr, "Could not close the file 2 \n");
         exit(EXIT_FAILURE);
     }
+
+    return path_to_write;
 }
 
 int find_address(char *target){
@@ -195,7 +228,7 @@ int iterate_over(char *buffer, int symbols_written, char *line, int handle_var) 
                     char *line_to_write;
                     line_to_write = (char *) calloc(BUFSIZE, sizeof(char));
                     strcpy(line_to_write, buffer);
-                    printf("ADING: %s %d\n", line_to_write, current_addres_for_variable);
+                    // printf("ADING: %s %d\n", line_to_write, current_addres_for_variable);
                     lookup_table[table_size++] = create_entry(line_to_write, current_addres_for_variable);
                     char lookup_str[MAXSIZE];
                     sprintf(lookup_str, "@%d", current_addres_for_variable);

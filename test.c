@@ -1,5 +1,6 @@
 #include "assembler.h"
-
+#include "parser.h"
+#include <math.h>
 
 int convert_to_bin(int number);
 
@@ -24,5 +25,6 @@ int convert_to_bin(int number){
         counter++;
     }   
 
+    printf("%d\n", int_len(binary));
     return binary;
 }

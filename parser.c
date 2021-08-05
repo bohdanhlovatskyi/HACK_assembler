@@ -1,4 +1,11 @@
-#include "assembler.h"
+#include "parser.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <search.h>
+#include <ctype.h>
+#include <limits.h>
+#include <math.h>
 
 // comp
 #define ZERO "101010"
@@ -45,16 +52,7 @@
 #define DEBUG 0
 #define NUM(a) sizeof(a) / sizeof(a[0])
 
-void parse_line(char *buffer);
-const char * decode_comp(const char *const input);
-const char * decode_dest(const char *const input);
-const char * decode_jump(const char *const input);
-int convert_to_bin(int number);
-int int_len(int integer);
-
-void proccess_A_cmd(char *buffer, FILE *outfile);
-
-
+/*
 int main(void) {
     char *test_lines[] = {
         "@0",
@@ -70,18 +68,11 @@ int main(void) {
     for (int i = 0; i < 8; i++) {
         parse_line(test_lines[i]);
     }
-    // parse_line(test_lines[2], outline_first);
-    // parse_line(test_lines[3], outline_second);
 
-}
+}*/
 
-void parse_line(char *buffer) {
-    FILE *res;
-    res = fopen("res.bin", "ab");
-    if (res == NULL) {
-        fprintf(stderr, "Could not open the file for writing");
-        exit(EXIT_SUCCESS);
-    }
+void parse_line(char *buffer, FILE *res) {
+
     char out[MAXSIZE] = {0};
     int out_iter = 0;
     char dest[MAXSIZE] = {0};

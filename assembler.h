@@ -1,10 +1,7 @@
-#include <stdio.h>
+#ifndef ASSEMBLER_H_
+#define ASSEMBLER_H_
 #include <stdlib.h>
-#include <string.h>
-#include <search.h>
-#include <ctype.h>
-#include <limits.h>
-#include <math.h>
+#include <stdio.h>
 
 typedef struct mapentry {
     char *label;
@@ -16,7 +13,7 @@ typedef struct mapentry {
 MapEntry *create_entry(char *label, int address);
 
 // void iter_over_lines(const char *path, void (*f)(*char))
-void iter_over_lines(const char *path, int here_should_go_func);
+char *iter_over_lines(const char *path, int here_should_go_func);
 int get_line(char *buf, size_t bufsize, FILE *fptr);
 
 char *get_path_to_write(const char *path);
@@ -31,3 +28,7 @@ void get_available_address(void);
 int in_arr(int *arr, int arr_size, int target);
 
 int iterate_over(char *buffer, int symbols_written, char *line, int handle_vars);
+
+char *get_result_path(char *path);
+
+#endif // ASSEMBLER_H_
