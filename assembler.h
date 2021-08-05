@@ -4,6 +4,7 @@
 #include <search.h>
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 
 typedef struct mapentry {
     char *label;
@@ -18,7 +19,7 @@ MapEntry *create_entry(char *label, int address);
 void iter_over_lines(const char *path, int here_should_go_func);
 int get_line(char *buf, size_t bufsize, FILE *fptr);
 
-FILE *get_file_to_write(const char *path);
+char *get_path_to_write(const char *path);
 void printTable(MapEntry **table, size_t table_size);
 int process_line(char *buffer, char *line, int *iter);
 

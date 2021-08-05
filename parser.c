@@ -1,13 +1,3 @@
-/*
-@0
-D=M
-@24
-D;JLE
-@17
-M=D
-@16
-D=A
-*/ 
 #include "assembler.h"
 
 // comp
@@ -51,15 +41,18 @@ D=A
 #define JLE "110"
 #define JMP "111"
 
-#define MAXSIZE 5
+#define MAXSIZE 64
 #define DEBUG 0
 #define NUM(a) sizeof(a) / sizeof(a[0])
 
-void parse_line(char *buffer, char *outline);
+void parse_line(char *buffer);
 const char * decode_comp(const char *const input);
 const char * decode_dest(const char *const input);
 const char * decode_jump(const char *const input);
-int convert(int dec);
+int convert_to_bin(int number);
+int int_len(int integer);
+
+void proccess_A_cmd(char *buffer, FILE *outfile);
 
 
 int main(void) {
@@ -74,18 +67,17 @@ int main(void) {
         "D=A"
     };
 
-
-    char outline_first[MAXSIZE];
-    char outline_second[MAXSIZE];
-    
-    parse_line(test_lines[2], outline_first);
+    for (int i = 0; i < 8; i++) {
+        parse_line(test_lines[i]);
+    }
+    // parse_line(test_lines[2], outline_first);
     // parse_line(test_lines[3], outline_second);
 
 }
 
-void parse_line(char *buffer, char *outline) {
+void parse_line(char *buffer) {
     FILE *res;
-    res = fopen("res.bin", "wb");
+    res = fopen("res.bin", "ab");
     if (res == NULL) {
         fprintf(stderr, "Could not open the file for writing");
         exit(EXIT_SUCCESS);
@@ -100,19 +92,7 @@ void parse_line(char *buffer, char *outline) {
     int current_char = 0; // int to iterate over the buffer
 
     if (buffer[0] == '@') {
-        char temp_str_int[MAXSIZE];
-        int temp_str_iter;
-        char str[15];
-        char ch;
-        int i = 1;
-        while ((ch = buffer[i++]) != '\0')
-            temp_str_int[temp_str_iter++] = ch;
-        int address = atoi(temp_str_int);
-        printf("%d\n", address);
-        sprintf(str, "%d\n", convert(address));
-        printf("%s : %d\n", str, NUM(str));
-        // fprintf(res, "0");
-        // here also num that gors after '@' should be converted to a binary
+        proccess_A_cmd(buffer, res);
     } else {
         char temp_buf[MAXSIZE] = {0};
         int temp_buf_iter;
@@ -146,9 +126,10 @@ void parse_line(char *buffer, char *outline) {
         }
         END:;
 
-        // printf("%s | %s | %s\n", dest, comp, jump);
-        // printf("%s | %s | %s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
-        
+        if (DEBUG) {
+            printf("%s | %s | %s\n", dest, comp, jump);
+            printf("%s | %s | %s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
+        }
         fprintf(res, "111%s%s%s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
     }
 }
@@ -225,14 +206,55 @@ const char * decode_jump(const char *const input)
     return NULL;
 }
 
-int convert(int dec)
-{
-    if (dec == 0)
-    {
-        return 0;
+int convert_to_bin(int number) {
+    int binary = 0, counter = 0;
+    while(number > 0){
+        int remainder = number % 2;
+        number /= 2;
+        binary += pow(10, counter) * remainder;
+        counter++;
+    }   
+
+    return binary;
+}
+
+int int_len(int integer){
+    int a;
+    for(a = 1; integer /= 10; a++);
+    return a;
+}
+
+
+void proccess_A_cmd(char *buffer, FILE *outfile) {
+    char temp_str_int[MAXSIZE];
+    int temp_str_iter = 0;
+    char address_str[15];
+    char ch;
+
+    // this fills up the buffer with string representation of the integer
+    int i = 1;
+    while ((ch = buffer[i++]) != '\0')
+        temp_str_int[temp_str_iter++] = ch;
+    temp_str_int[temp_str_iter] = '\0';
+
+    // type conversion
+    int address = atoi(temp_str_int); // address in int
+    int bin_repr = convert_to_bin(address); // bin address in int: `11010`
+    sprintf(address_str, "%d", bin_repr); // bin address in str
+
+    int len;
+    if ((len = 15 - int_len(bin_repr)) > 0) {
+        // creates a string of zeroes to add them to the beginning of binary string,
+        // so to its size was 15 digits
+        char zeroes_to_add[len];
+        memset(zeroes_to_add, '0', len - 1);
+        zeroes_to_add[len - 1] = '\0';
+
+        // prints the A cmd to the file
+        fprintf(outfile, "0%s%s\n", zeroes_to_add, address_str);
+    } else {
+        fprintf(outfile, "0%s\n", address_str);
     }
-    else
-    {
-        return (dec % 2 + 10 * convert(dec / 2));
-    }
+    // cleaning up
+    memset(temp_str_int, 0, temp_str_iter);
 }

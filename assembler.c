@@ -45,6 +45,18 @@ int main(int argc, char **argv) {
     printTable(lookup_table, table_size);
 
     iter_over_lines("rect/Rect.asm_no_comments_no_comments", 2);
+
+    /*
+    char line[MAXSIZE];
+    int length;
+
+    FILE *read_from;
+    read_from = fopen("rect/Rect.asm_no_comments_no_comments", "r");
+
+    while ((length = get_line(line, MAXSIZE, read_from)) != EOF) {
+        proccess_A_cmd(line);
+    }
+    */
     
 }
 
@@ -65,7 +77,7 @@ void printTable(MapEntry **table, size_t table_size) {
  * accepts pointer to a file and a function to apply at each line
  */
 void iter_over_lines(const char *path, int pass) {
-    FILE *fptr;
+    FILE *fptr, *fptr_to_write;
     fptr = fopen(path, "r");
     if (fptr == NULL) {
         fprintf(stderr, "Could not open the file for reading\n");
@@ -82,7 +94,17 @@ void iter_over_lines(const char *path, int pass) {
     line = (char *)malloc(bufsize * sizeof(char));
     int length = 0;
 
-    FILE *fptr_to_write = get_file_to_write(path);
+    char *path_to_write = get_path_to_write(path);
+
+    fptr_to_write = fopen(path_to_write, "w");
+    if (fptr_to_write == NULL) {
+        fprintf(stderr, "Could not open the file %s to write\n", path_to_write);
+        exit(EXIT_FAILURE);
+    } else {
+        // printf("FIle at this path was successfully openned: %s\n", new_path);
+        ;
+    }
+    free(path_to_write);
 
     int instructions_written = 0; // keeps treck of the current instruction number
     while ((length = get_line(buffer, bufsize, fptr)) != -1) {
@@ -289,27 +311,19 @@ MapEntry *create_entry(char *label, int address) {
 }
 
 
-FILE *get_file_to_write(const char *path) {
+char *get_path_to_write(const char *path) {
     char add_str[] = "_no_comments";
-    char new_path[64] = {0};
-    FILE *fptr;
+    char *new_path;
 
+    new_path = (char *) calloc(MAXSIZE, sizeof(char));
+    memset(new_path, 0, MAXSIZE);
     // new path creation
     strcat(new_path, path);
     strcat(new_path, add_str);
-    printf("The path to write: %s\n", new_path);
+    if (DEBUG)
+        printf("The path to write: %s\n", new_path);
 
-    // file opennign handler
-    fptr = fopen(new_path, "w");
-    if (fptr == NULL) {
-        fprintf(stderr, "Could not open the file %s to write\n", new_path);
-        exit(EXIT_FAILURE);
-    } else {
-        // printf("FIle at this path was successfully openned: %s\n", new_path);
-        ;
-    }
-
-    return fptr;
+    return new_path;
 }
 
 // gets line from a file
