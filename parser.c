@@ -52,24 +52,6 @@
 #define DEBUG 0
 #define NUM(a) sizeof(a) / sizeof(a[0])
 
-/*
-int main(void) {
-    char *test_lines[] = {
-        "@0",
-        "D=M",
-        "@24",
-        "D;JLE",
-        "@17",
-        "M=D",
-        "@16",
-        "D=A"
-    };
-
-    for (int i = 0; i < 8; i++) {
-        parse_line(test_lines[i]);
-    }
-
-}*/
 
 void parse_line(char *buffer, FILE *res) {
 
@@ -79,38 +61,44 @@ void parse_line(char *buffer, FILE *res) {
     char comp[MAXSIZE] = {0};
     char jump[MAXSIZE] = {0};
     int jump_iter = 0;
+
     char ch = 0; // character that will be used to iterate over the string
     int current_char = 0; // int to iterate over the buffer
 
     if (buffer[0] == '@') {
+        // then it is A commands, which should be processed by dif func
         proccess_A_cmd(buffer, res);
     } else {
-        char temp_buf[MAXSIZE] = {0};
+        char temp_buf[MAXSIZE] = {0}; // to put parts of expr into it
         int temp_buf_iter;
+
         while ((ch = buffer[current_char++]) != '\0') {
             switch (ch)
             {
-            case '=':
+            case '=': // if the = is seen, then the instruction definetely has dest part
                 temp_buf[temp_buf_iter] = '\0';
-                strcpy(dest, temp_buf);
+                strcpy(dest, temp_buf); // fills dest part
                 memset(temp_buf, 0, temp_buf_iter);
                 temp_buf_iter = 0;
                 break;
-            case ';':
+            case ';': // if the ; is seen, the the instruction definetely has comp and jump part
                 temp_buf[temp_buf_iter] = '\0';
-                strcat(comp, temp_buf);
+                strcat(comp, temp_buf); // fills comp part
                 memset(temp_buf, 0, temp_buf_iter);
                 temp_buf_iter = 0;
+
+                // gets remainding symbols and puts them into jump part
                 while ((ch = buffer[current_char++]) != '\0') {
                     jump[jump_iter++] = ch;
                 }
                 goto END;
                 break;
-            default:
+            default: // adds to the temp buffer
                 temp_buf[temp_buf_iter++] = ch;
                 break;
             }
         }
+        // if ; was not seen after =, then it is comp part
         if (temp_buf_iter != 0) {
             strcat(comp, temp_buf);
             temp_buf_iter = 0;
@@ -121,6 +109,7 @@ void parse_line(char *buffer, FILE *res) {
             printf("%s | %s | %s\n", dest, comp, jump);
             printf("%s | %s | %s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
         }
+        // prints the result to file
         fprintf(res, "111%s%s%s\n", decode_dest(dest), decode_comp(comp), decode_jump(jump));
     }
 }
@@ -165,6 +154,7 @@ const char * decode_comp(const char *const input)
     return NULL;
 }
 
+
 const char * decode_dest(const char *const input)
 {
     if (DEBUG)
@@ -180,6 +170,7 @@ const char * decode_dest(const char *const input)
 
     return NULL;
 }
+
 
 const char * decode_jump(const char *const input)
 {
@@ -197,6 +188,7 @@ const char * decode_jump(const char *const input)
     return NULL;
 }
 
+
 int convert_to_bin(int number) {
     int binary = 0, counter = 0;
     while(number > 0){
@@ -209,9 +201,12 @@ int convert_to_bin(int number) {
     return binary;
 }
 
+
 int int_len(int integer){
     int a;
+
     for(a = 1; integer /= 10; a++);
+    
     return a;
 }
 
